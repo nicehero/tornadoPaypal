@@ -70,27 +70,44 @@ paypal.Buttons({
 """
 clientID = "AQG0BHDHJiNOW_cLOHCiJ3gV_ogy1ggjsHuXT9jykaEVsuX54G31v1sOjHDw4RU-bhRV74aORtZHmNdZ"
 secure = "EBx3OTa9q6GrrGWzrbDysvSpOQjGIhdNWjHJLVQ4ffLjjN7biyNNKlW4mRQ50RlaKDfHbVCbLDlJWs9k"
-testAccount = "sb-tqb8n1333149@personal.example.com"
-testPassword = "Ix\"r1.?j"
+
+url1 = "https://api.paypal.com/v2/checkout/orders/"
+url = "https://api.sandbox.paypal.com/v2/checkout/orders/"
+
+#url1 = "https://api.paypal.com/v1/payments/payment/"
+#url = "https://api.paypal.com/v2/checkout/orders/"
+
 class MainHandler(tornado.web.RequestHandler):
 	def get(self):
+		self.set_cookie('SameSite','Strict')
+		self.set_header(name="Access-Control-Allow-Origin", value="*")
+		self.set_header(name="Access-Control-Allow-Credentials", value="true")
 		self.write(html % (clientID,"1.0","userID_productID_"))
 
 class PaypalPayOk(tornado.web.RequestHandler):
 	def post(self):
-		url = "https://api.sandbox.paypal.com/v2/checkout/orders/"
-		#url = "https://api.paypal.com/v2/checkout/orders/"
 		j = json.loads(self.request.body.decode('utf-8'))
 		ua_header = {"Content-Type" : "application/json"}
 		ua_header["Authorization"] = "Basic " + base64.b64encode(clientID + ":" + secure)
+		
+		request = urllib2.Request(url1 + j["data"]["orderID"], headers = ua_header)
+		response = urllib2.urlopen(request)
+		try:
+			ret = response.read()
+			print ret
+			j1 = json.loads(ret)
+			j["data"]["orderID"] = j1["cart"]
+		except:
+			pass
+		
 		request = urllib2.Request(url + j["data"]["orderID"], headers = ua_header)
 		response = urllib2.urlopen(request)
-		html = response.read()
-		print html
-		j2 = json.loads(html)
+		ret = response.read()
+		print ret
+		j2 = json.loads(ret)
 		if j2["status"] == "COMPLETED":
 			pass
-		self.write("OK")
+		self.write("success")
 """
 settings = {
     "static_path": os.path.join(os.path.dirname(__file__), "static"),
