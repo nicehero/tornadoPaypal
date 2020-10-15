@@ -71,7 +71,7 @@ paypal.Buttons({
 clientID = "AQG0BHDHJiNOW_cLOHCiJ3gV_ogy1ggjsHuXT9jykaEVsuX54G31v1sOjHDw4RU-bhRV74aORtZHmNdZ"
 secure = "EBx3OTa9q6GrrGWzrbDysvSpOQjGIhdNWjHJLVQ4ffLjjN7biyNNKlW4mRQ50RlaKDfHbVCbLDlJWs9k"
 
-url1 = "https://api.paypal.com/v2/checkout/orders/"
+url1 = "https://api.sandbox.paypal.com/v1/payments/payment/"
 url = "https://api.sandbox.paypal.com/v2/checkout/orders/"
 
 #url1 = "https://api.paypal.com/v1/payments/payment/"
@@ -91,8 +91,8 @@ class PaypalPayOk(tornado.web.RequestHandler):
 		ua_header["Authorization"] = "Basic " + base64.b64encode(clientID + ":" + secure)
 		
 		request = urllib2.Request(url1 + j["data"]["orderID"], headers = ua_header)
-		response = urllib2.urlopen(request)
 		try:
+			response = urllib2.urlopen(request)
 			ret = response.read()
 			print ret
 			j1 = json.loads(ret)
