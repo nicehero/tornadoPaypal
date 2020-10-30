@@ -106,6 +106,12 @@ class PaypalPayOk(tornado.web.RequestHandler):
 		print ret
 		j2 = json.loads(ret)
 		if j2["status"] == "COMPLETED":
+			try:
+				j["data"]["orderID"] = j["data"]["orderID"] + "_" + j2["purchase_units"][0]["payments"]["captures"][0]["id"]
+				logging.info("paypal_" + j["data"]["orderID"])
+			except:
+				pass
+			#do recharge
 			pass
 		self.write("success")
 """
