@@ -19,7 +19,7 @@ import struct
 import time
 import MySQLdb
 import datetime
- 
+
 html = """
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
