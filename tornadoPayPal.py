@@ -28,21 +28,24 @@ html = """
 <body>
 <script id ="purchase" src="https://www.paypal.com/sdk/js?client-id=%s"></script>
 <script>
+var amount_ = "%s";
+var custom_id_ = "%s";
 paypal.Buttons({
     createOrder: function(data, actions) {
       // Set up the transaction
       return actions.order.create({
         purchase_units: [{
-          amount: {
+           amount: {
 		    currency_code: "USD",
-            value: "%s"
-          }
+            value: amount_
+          },
+		  custom_id:custom_id_
         }]
       });
     },
     onApprove: function(data, actions) {
       return actions.order.capture().then(function(details) {
-		var d = {data,'ext':"%s"}
+		var d = {data,'ext':custom_id_}
 		document.write("<h1>Thank you for purchase.Please save your order.</h1>"
 		+ "<h2>" + JSON.stringify(d) + "</h2>"
 		+ "<input id='btnClose' type='button' value='close' onClick='custom_close()' />")
@@ -68,14 +71,16 @@ paypal.Buttons({
 	</script>
 </body>
 """
-clientID = "AQG0BHDHJiNOW_cLOHCiJ3gV_ogy1ggjsHuXT9jykaEVsuX54G31v1sOjHDw4RU-bhRV74aORtZHmNdZ"
-secure = "EBx3OTa9q6GrrGWzrbDysvSpOQjGIhdNWjHJLVQ4ffLjjN7biyNNKlW4mRQ50RlaKDfHbVCbLDlJWs9k"
+clientID = "AUBZswxAZYPGXSN-JS43rnDWbE-R3NAnaMjoPVOS9zozbF3uJ82R0-nj_8kMCyHEcPwvSD5Fc6w_pnnZ"
+secure = "EAbuW3yTQlVAVPVS19_wvPKKe_k0TU4_RT62uiTSccblCGAivK6v_HhlNUklLMBZZFD4_PIr0puwzIBX"
 
 url1 = "https://api.sandbox.paypal.com/v1/payments/payment/"
 url = "https://api.sandbox.paypal.com/v2/checkout/orders/"
+url2 = "https://api.sandbox.paypal.com/v2/payments/captures/"
 
 #url1 = "https://api.paypal.com/v1/payments/payment/"
 #url = "https://api.paypal.com/v2/checkout/orders/"
+#url2 = "https://api.paypal.com/v2/payments/captures/"
 
 class MainHandler(tornado.web.RequestHandler):
 	def get(self):
@@ -84,6 +89,42 @@ class MainHandler(tornado.web.RequestHandler):
 		self.set_header(name="Access-Control-Allow-Credentials", value="true")
 		self.write(html % (clientID,"1.0","userID_productID_"))
 
+#on "event_type": "PAYMENT.CAPTURE.COMPLETED"
+class PaypalPayWebhook(tornado.web.RequestHandler):
+	def post(self):
+		logging.info("webhook postData:")
+		postData = self.request.body.decode('utf-8')
+		logging.info(postData)
+		j = json.loads(postData)
+		if j["event_type"] != "PAYMENT.CAPTURE.COMPLETED":
+			self.write("success")
+			return
+		try:
+			if j["resource"]["status"] != "COMPLETED":
+				self.write("success")
+				return
+			ua_header = {"Content-Type" : "application/json"}
+			ua_header["Authorization"] = "Basic " + base64.b64encode(clientID + ":" + secure)
+			request = urllib2.Request(url2 + j["resource"]["id"], headers = ua_header)
+			response = urllib2.urlopen(request)
+			ret = response.read()
+			print ret
+			j2 = json.loads(ret)
+			if j2["status"] == "COMPLETED":
+				orderID = "paypal_" + j["resource"]["id"]
+				ext = j["resource"]["custom_id"]
+				logging.info("orderID:")
+				logging.info(orderID)
+				#TODO recharge
+			self.write("success")
+		except Exception as e:
+			logging.info("except")
+			logging.info(e.args)
+			logging.info(str(e))
+			logging.info(repr(e))
+			self.write("success")
+			return
+		
 class PaypalPayOk(tornado.web.RequestHandler):
 	def post(self):
 		j = json.loads(self.request.body.decode('utf-8'))
@@ -132,6 +173,7 @@ class Application(tornado.web.Application):
 		handlers = [
 			(r"/", MainHandler),
 			(r"/PaypalPayOk", PaypalPayOk),
+			(r"/PaypalPayWebhook", PaypalPayWebhook),
 		]
 		settings = dict(
 			cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
